@@ -1,36 +1,36 @@
-using System;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 
 namespace FileSystemWatcherIssueReproduce;
 
-[SimpleJob(RuntimeMoniker.Net80)]
 [SimpleJob(RuntimeMoniker.Net90)]
+#pragma warning disable CA1515 // Consider making public types internal -- needed for BenchmarkDotNet
 public class FileSystemWatcherBenchmark
+#pragma warning restore CA1515 // Consider making public types internal
 {
-	[Params(10)]
-	[SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global", Justification = "Set implicitly by BenchmarkDotNet")]
-	public int FileCount { get; set; }
-
 	private string _testPath = null!;
 
 	[GlobalSetup]
 	public void Setup()
 	{
-		// replace this with custom path if needed
-		_testPath = Environment.GetEnvironmentVariable("BASE_PATH") ?? throw new ArgumentNullException();
+		_testPath = Path.Combine(Path.GetTempPath(), "test");
+		if (!Directory.Exists(_testPath))
+		{
+			Directory.CreateDirectory(_testPath);
+		}
+	}
+
+	[GlobalCleanup]
+	public void Cleanup()
+	{
+		Directory.Delete(_testPath, false);
 	}
 
 	[Benchmark]
 	public void Run()
 	{
-		for (var i = 0; i < FileCount; i++)
-		{
-			using var watcher = new FileSystemWatcher(Path.Join(_testPath));
-			watcher.Filter = $"file{i:D2}.txt";
-			watcher.EnableRaisingEvents = true;
-		}
+		using var watcher = new FileSystemWatcher(Path.Join(_testPath));
+		watcher.EnableRaisingEvents = true;
 	}
 }
